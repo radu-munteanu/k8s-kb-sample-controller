@@ -1,0 +1,3 @@
+version: "1"
+domain: example.com
+repo: gitlab.com/radu-munteanu/k8s-kb-sample-controller
