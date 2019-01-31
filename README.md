@@ -82,7 +82,7 @@ sub   elg2048/281DDC4B 2010-05-18 [E]
 ```bash
 sudo rpm --import oracle_vbox.asc
 
-rpm --checksig VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm 
+rpm --checksig VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm
 VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm: digests signatures OK
 ```
 
