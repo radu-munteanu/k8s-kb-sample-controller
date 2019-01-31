@@ -12,6 +12,6 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager gitlab.com/radu
 
 # Copy the controller-manager into a thin image
 FROM ubuntu:latest
-WORKDIR /root/
+WORKDIR /
 COPY --from=builder /go/src/gitlab.com/radu-munteanu/k8s-kb-sample-controller/manager .
-ENTRYPOINT ["./manager"]
+ENTRYPOINT ["/manager"]

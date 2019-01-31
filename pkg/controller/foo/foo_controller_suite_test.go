@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Radu Munteanu.
+Copyright 2019 Radu Munteanu.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@ limitations under the License.
 package foo
 
 import (
-	"log"
+	stdlog "log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 
 	var err error
 	if cfg, err = t.Start(); err != nil {
-		log.Fatal(err)
+		stdlog.Fatal(err)
 	}
 
 	code := m.Run()

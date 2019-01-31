@@ -6,29 +6,40 @@ This is the [sample-controller](https://github.com/kubernetes/sample-controller)
 > The custom controller is actually a custom controller manager. A manager is a process that can encapsulate multiple controllers. It just happens that, in our case, there is only one controller instance.
 
 **Prerequisites:**
-- MiniKube
+- Virtualbox
+- MiniKube 
+- Kubernetes
+- Docker
 - KubeCtl
-- GoLang
-- Docker 
 
 Last versions tested:
-- MiniKube: 0.30
-- Kubernetes: 1.12 (`minikube start --kubernetes-version v1.12.0`)
-- KubeCtl: 1.12
-- KubeBuilder: 1.0.5
-- GoLang: 1.11.3
-- Docker: ce-18.06.1
+- Fedora 29 (kernel 4.20.3-200 - updated at 2019-01-23)
+- VirtualBox 6.0.2
+- MiniKube: 0.33.1
+- Kubernetes: 1.13 (`minikube start --kubernetes-version v1.13.0`)
+- Docker: 18.06.1-ce
+- KubeCtl: 1.13.2
+
+**Go and KubeBuilder versions tested:**
+- GoLang: 1.11.4
+- KubeBuilder: 1.0.7
 
 ## Table of Contents
 
 * [Build This Project](#build-this-project)
+* [Install Prerequisites](#install-prerequisites)
+    * [VirtualBox 6.0.2](#virtualbox-602)
+    * [MiniKube 0.33.1](#minikube-0331)
+    * [Kubernetes 1.13](#kubernetes-113)
+    * [Docker 18.06.1](#docker-18061)
+    * [Kubectl 1.13.0](#kubectl-1130)
 * [Make a New Controller from Scratch](#make-a-new-controller-from-scratch)
     * [Code, Build and Run The Controller Locally](#code-build-and-run-the-controller-locally)
 * [Deploy Controller to Kubernetes](#deploy-controller-to-kubernetes)
     * [Create The Docker Image and Push It to a Docker Registry](#create-the-docker-image-and-push-it-to-a-docker-registry)
     * [Apply Additional Resources](#apply-additional-resources)
     * [Create The Controller Resource and Apply It to The K8s Cluster](#create-the-controller-resource-and-apply-it-to-the-k8s-cluster)
-* [Fixes](#fixes)
+* [Known Issues](#known-issues)
 * [What's Next](#whats-next)
 
 ## Build This Project
@@ -45,15 +56,140 @@ You can now jump to [Deploy Controller to Kubernetes](#deploy-controller-to-kube
 
 If you want to know more about the code, please read all the chapters below.
 
+## Install Prerequisites
+### VirtualBox 6.0.2
+[https://www.virtualbox.org/wiki/Linux_Downloads](https://www.virtualbox.org/wiki/Linux_Downloads)
+
+```bash
+curl -o "VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm" -L  https://download.virtualbox.org/virtualbox/6.0.2/VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm
+curl -o "oracle_vbox.asc" -L https://www.virtualbox.org/download/oracle_vbox.asc
+```
+
+```bash
+gpg2 --show-keys --fingerprint --keyid-format SHORT oracle_vbox.asc
+pub   dsa1024/98AB5139 2010-05-18 [SC]
+      Key fingerprint = 7B0F AB3A 13B9 0743 5925  D9C9 5442 2A4B 98AB 5139
+uid                    Oracle Corporation (VirtualBox archive signing key) <info@virtualbox.org>
+sub   elg2048/281DDC4B 2010-05-18 [E]
+```
+> From [https://www.virtualbox.org/wiki/Linux_Downloads](https://www.virtualbox.org/wiki/Linux_Downloads):
+>
+> The key fingerprint is
+>
+> 7B0F AB3A 13B9 0743 5925  D9C9 5442 2A4B 98AB 5139
+> Oracle Corporation (VirtualBox archive signing key) <info@virtualbox.org>
+
+```bash
+sudo rpm --import oracle_vbox.asc
+
+rpm --checksig VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm 
+VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm: digests signatures OK
+```
+
+```bash
+KERNEL_VERSION=$(uname -r)
+
+sudo dnf install "kernel-devel-${KERNEL_VERSION}"
+
+sudo dnf install VirtualBox-6.0-6.0.2_128162_fedora29-1.x86_64.rpm
+```
+
+### MiniKube 0.33.1
+[https://github.com/kubernetes/minikube/releases/tag/v0.33.1](https://github.com/kubernetes/minikube/releases/tag/v0.33.1)
+
+```bash
+curl -Lo minikube https://storage.googleapis.com/minikube/releases/v0.33.1/minikube-linux-amd64 && chmod +x minikube && sudo cp minikube /usr/local/bin/ && rm minikube
+```
+
+### Kubernetes 1.13
+```bash
+minikube start --kubernetes-version v1.13.0
+```
+
+### Docker 18.06.1
+Check Docker version from Minikube
+```bash
+minikube ssh "docker version"
+========================================
+kubectl could not be found on your path. kubectl is a requirement for using minikube
+To install kubectl, please run the following:
+
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.13.2/bin/linux/amd64/kubectl && chmod +x kubectl && sudo cp kubectl /usr/local/bin/ && rm kubectl
+
+To disable this message, run the following:
+
+minikube config set WantKubectlDownloadMsg false
+========================================
+Client:
+ Version:           18.06.1-ce
+ API version:       1.38
+ Go version:        go1.10.3
+ Git commit:        e68fc7a
+ Built:             Tue Aug 21 17:20:43 2018
+ OS/Arch:           linux/amd64
+ Experimental:      false
+
+Server:
+ Engine:
+  Version:          18.06.1-ce
+  API version:      1.38 (minimum version 1.12)
+  Go version:       go1.10.3
+  Git commit:       e68fc7a
+  Built:            Tue Aug 21 17:28:38 2018
+  OS/Arch:          linux/amd64
+  Experimental:     false
+```
+
+Install docker from [https://download.docker.com/linux/centos/7/x86_64/stable/Packages/](https://download.docker.com/linux/centos/7/x86_64/stable/Packages/)
+```bash
+curl -Lo docker-ce-18.06.1.ce-3.el7.x86_64.rpm https://download.docker.com/linux/centos/7/x86_64/stable/Packages/docker-ce-18.06.1.ce-3.el7.x86_64.rpm
+
+sudo dnf install docker-ce-18.06.1.ce-3.el7.x86_64.rpm
+```
+
+Test docker
+```bash
+sudo systemctl enable docker && sudo systemctl start docker
+
+docker version
+
+sudo docker version
+
+# add the current user to docker group 
+sudo usermod -a -G docker <user>
+
+# log out and log in with the user
+
+# restart minikube
+minikube start
+```
+
+### Kubectl 1.13.0
+(from minikube output, with version changed to match Kubernetes release)
+
+```bash
+curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl && chmod +x kubectl && sudo cp kubectl /usr/local/bin/ && rm kubectl
+
+kubectl version
+Client Version: version.Info{Major:"1", Minor:"13", GitVersion:"v1.13.0", GitCommit:"ddf47ac13c1a9483ea035a79cd7c10005ff21a6d", GitTreeState:"clean", BuildDate:"2018-12-03T21:04:45Z", GoVersion:"go1.11.2", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"13", GitVersion:"v1.13.0", GitCommit:"ddf47ac13c1a9483ea035a79cd7c10005ff21a6d", GitTreeState:"clean", BuildDate:"2018-12-03T20:56:12Z", GoVersion:"go1.11.2", Compiler:"gc", Platform:"linux/amd64"}
+
+kubectl get nodes
+NAME       STATUS   ROLES    AGE   VERSION
+minikube   Ready    master   32m   v1.13.0
+```
+
 ## Make a New Controller from Scratch
 The following steps will guide you through replicating the whole project without cloning any sources from this repo. Use this to learn how to make a custom controller with a custom resource.
 
 ### Code, Build and Run The Controller Locally
+[https://github.com/kubernetes-sigs/kubebuilder/releases](https://github.com/kubernetes-sigs/kubebuilder/releases)
+
 Install KubeBuilder and project dir
 ```bash
 cd ~
 # get latest kubebuilder
-kb_version="1.0.5"
+kb_version="1.0.7"
 curl -o "kubebuilder_${kb_version}_linux_amd64.tar.gz" -L "https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${kb_version}/kubebuilder_${kb_version}_linux_amd64.tar.gz"
 rm -rf kubebuilder_${kb_version}_linux_amd64 && tar -zxvf "kubebuilder_${kb_version}_linux_amd64.tar.gz"
 sudo rm -rf '/usr/local/kubebuilder' && sudo mv "kubebuilder_${kb_version}_linux_amd64" '/usr/local/kubebuilder'
@@ -63,22 +199,28 @@ sudo bash -c 'cat > /etc/profile.d/kubebuilder.sh <<EOF
 export PATH=\$PATH:/usr/local/kubebuilder/bin
 EOF'
 
+
 # create you project directory structure. Example:
 mkdir -p "${GOPATH}/src/gitlab.com/radu-munteanu/k8s-kb-sample-controller"
 
 # check version in a go project
 cd "${GOPATH}/src/gitlab.com/radu-munteanu/k8s-kb-sample-controller"
+
+# restart console in order to reload profile or do bash -
+
+# test kubebuilder
 kubebuilder version
+Version: version.Version{KubeBuilderVersion:"1.0.7", KubernetesVendor:"1.11", GitCommit:"63bd3604767ddb5042fe76b67d097840a7a282c2", BuildDate:"2018-12-20T18:41:54Z", GoOs:"unknown", GoArch:"unknown"}
 ```
 
 Initial Boilerplating (Generating Code for Controller and Foo Custom Resource)
 ```bash
-# install go dep if not installer
+# install go dep if not installed
 go get -u github.com/golang/dep/cmd/dep
 sudo mkdir -p /usr/local/bin
 sudo cp $GOPATH/bin/dep /usr/local/bin
 
-# generate controller boilerplate
+# generate controller boilerplate - this may take a few minutes
 kubebuilder init --dep --domain example.com --license apache2 --owner "Radu Munteanu"
 
 # generate resource boilerplate
@@ -134,12 +276,26 @@ Generate Boilerplate for updated resource
 make
 ```
 
-Add Status update code in Reconcile func (`pkg/controller/foo/foo_controller.go`)
+Add Replicas and Status update code in Reconcile func (`pkg/controller/foo/foo_controller.go`)
 ```go
 
 func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 ...
+	specReplicas := instance.Spec.Replicas
 
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired Deployment object
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name + "-deployment",
+			Namespace: instance.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
+			},
+			Replicas: &specReplicas,
+...
 	// updating the status
 	instance.Status.AvailableReplicas = found.Status.AvailableReplicas
 	err = r.Status().Update(context.Background(), instance)
@@ -149,16 +305,6 @@ func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
-	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
-		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
-		err = r.Update(context.TODO(), found)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-	}
-
-	return reconcile.Result{}, nil
 }
 ```
 
@@ -169,8 +315,8 @@ make
 
 Start the Controller Manager.
 ```
-# start K8s
-minikube start --kubernetes-version v1.12.0
+# start K8s - if not started
+minikube start --kubernetes-version v1.13.0
 
 # create the CRD
 # - option 1
@@ -319,76 +465,35 @@ kubectl get deployment foo-sample-02-deployment
 
 kubectl describe deployment foo-sample-02-deployment
 
-# we can see one replica in the deployment instead of two. why?
+# there should be two replicas in the deployment
 ```
 
-## Fixes
-For foo-sample-02, we're not seeing two replicas, but just one. That's because the current code defines a deployment without the given replicas number in the spec.
+## Known Issues
+As of KubeBuilder 1.0.7 (vs 1.0.5), there are a few issues that pop-up in the controller manager logs (there are shown if you start it locally), even though the resources seem to be created/updated successfully:
 
-Update the Reconcile function (`pkg/controller/foo/foo_controller.go`):
-```go
-func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-...
+- when applying a new resource:
 
-	specReplicas := instance.Spec.Replicas
+    ```{
+      "level": "error",
+      "ts": 1548256859.920939,
+      "logger": "kubebuilder.controller",
+      "msg": "Reconciler error",
+      "controller": "foo-controller",
+      "request": "default/foo-sample-01",
+      "error": "resource name may not be empty",
+    ```
 
-	// TODO(user): Change this to be the object type created by your controller
-	// Define the desired Deployment object
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
-			Namespace: instance.Namespace,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
-			},
-			Replicas: &specReplicas,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
-				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:  "nginx",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		},
-	}
+- when the resource is updated (increasing the number of replicas):
 
-...
-```
-
-Rebuild and deploy
-```
-make
-
-make docker-build
-
-docker images
-REPOSITORY                          TAG                 IMAGE ID            CREATED             SIZE
-controller                          latest              f53d08bd7283        2 seconds ago       122MB
-
-docker tag $(docker images -q | head -1) localhost:5000/kb-manager:latest
-
-docker push localhost:5000/kb-manager:latest
-
-kubectl delete statefulset controller-manager -n system
-
-kubectl apply -f 'config/manager/kb-manager.yaml'
-```
-
-Check the foo-sample-02 after a few moments
-```bash
-kubectl describe Foo foo-sample-02
-
-kubectl describe deployment foo-sample-02-deployment
-
-# (optional) you can check the Foo resource also by using the sample plugin (https://gitlab.com/radu-munteanu/k8s-sample-plugin)
-kubectl sample
-```
+    ```{
+      "level": "error",
+      "ts": 1548259361.6205256,
+      "logger": "kubebuilder.controller",
+      "msg": "Reconciler error",
+      "controller": "foo-controller",
+      "request": "default/foo-sample-01",
+      "error": "Operation cannot be fulfilled on deployments.apps \"foo-sample-01-deployment\": the object has been modified; please apply your changes to the latest version and try again",
+    ```
 
 ## What's Next
 

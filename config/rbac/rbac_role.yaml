@@ -17,6 +17,14 @@ rules:
   - patch
   - delete
 - apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
   - tools.example.com
   resources:
   - foos
@@ -28,6 +36,14 @@ rules:
   - update
   - patch
   - delete
+- apiGroups:
+  - tools.example.com
+  resources:
+  - foos/status
+  verbs:
+  - get
+  - update
+  - patch
 - apiGroups:
   - admissionregistration.k8s.io
   resources:

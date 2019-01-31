@@ -1,5 +1,5 @@
 /*
-Copyright 2018 Radu Munteanu.
+Copyright 2019 Radu Munteanu.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package foo
 
 import (
 	"context"
-	"log"
 	"reflect"
 
 	toolsv1beta1 "gitlab.com/radu-munteanu/k8s-kb-sample-controller/pkg/apis/tools/v1beta1"
@@ -34,8 +33,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
+
+var log = logf.Log.WithName("controller")
 
 /**
 * USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
@@ -44,7 +46,6 @@ import (
 
 // Add creates a new Foo Controller and adds it to the Manager with default RBAC. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-// USER ACTION REQUIRED: update cmd/manager/main.go to call this tools.Add(mgr) to install this Controller
 func Add(mgr manager.Manager) error {
 	return add(mgr, newReconciler(mgr))
 }
@@ -95,7 +96,9 @@ type ReconcileFoo struct {
 // a Deployment as an example
 // Automatically generate RBAC rules to allow the Controller to read and write Deployments
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=tools.example.com,resources=foos,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=tools.example.com,resources=foos/status,verbs=get;update;patch
 func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// Fetch the Foo instance
 	instance := &toolsv1beta1.Foo{}
@@ -146,7 +149,7 @@ func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, e
 	found := &appsv1.Deployment{}
 	err = r.Get(context.TODO(), types.NamespacedName{Name: deploy.Name, Namespace: deploy.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		log.Printf("Creating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
+		log.Info("Creating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
 		err = r.Create(context.TODO(), deploy)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -166,7 +169,7 @@ func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Update the found object and write the result back if there are any changes
 	if !reflect.DeepEqual(deploy.Spec, found.Spec) {
 		found.Spec = deploy.Spec
-		log.Printf("Updating Deployment %s/%s\n", deploy.Namespace, deploy.Name)
+		log.Info("Updating Deployment", "namespace", deploy.Namespace, "name", deploy.Name)
 		err = r.Update(context.TODO(), found)
 		if err != nil {
 			return reconcile.Result{}, err
