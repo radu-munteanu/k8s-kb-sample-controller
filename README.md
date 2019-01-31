@@ -7,7 +7,7 @@ This is the [sample-controller](https://github.com/kubernetes/sample-controller)
 
 **Prerequisites:**
 - Virtualbox
-- MiniKube 
+- MiniKube
 - Kubernetes
 - Docker
 - KubeCtl
