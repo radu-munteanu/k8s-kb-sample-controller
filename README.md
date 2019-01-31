@@ -499,6 +499,9 @@ As of KubeBuilder 1.0.7 (vs 1.0.5), there are a few issues that pop-up in the co
 
 What to look at next:
 
+- Auth Proxy and the Metrics Service
+    - look for `config/rbac/auth_proxy_` and `config/default/manager_` files  
+
 - Finalizers - for special cleanup logic // "Created objects are automatically garbage collected" when the resource is not found
     - [https://book.kubebuilder.io/beyond_basics/using_finalizers.html](https://book.kubebuilder.io/beyond_basics/using_finalizers.html)
 
