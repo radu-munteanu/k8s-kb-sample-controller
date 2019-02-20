@@ -384,7 +384,10 @@ Make a Docker Registry on MiniKube with a shared volume from your machine user's
 minikube ssh "docker run -d -p 5000:5000 --restart=always --name registry -v /hosthome/$(whoami)/registry/:/var/lib/registry registry"
 ```
 
-For the MiniKube VM, port forward 5000 to 5000 on the Network Adapter 1 (NAT).
+For the MiniKube VM, port forward 5000 to 5000 on the Network Adapter 1 (NAT). This can be done from the Settings of the minikube machine in VirtualBox app, or through a `vboxmanage` command.
+```bash
+vboxmanage controlvm "minikube" natpf1 "docker-registry,tcp,,5000,,5000"
+```
 
 Tag the image.
 ```bash
