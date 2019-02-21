@@ -278,7 +278,6 @@ make
 
 Add Replicas and Status update code in Reconcile func (`pkg/controller/foo/foo_controller.go`)
 ```go
-
 func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 ...
 	specReplicas := instance.Spec.Replicas
@@ -306,6 +305,39 @@ func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// TODO(user): Change this for the object type created by your controller
 	// Update the found object and write the result back if there are any changes
 }
+```
+
+Change deployment definition so that the name given is the one in spec's DeploymentName (`pkg/controller/foo/foo_controller.go`)
+```go
+func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+...
+	specReplicas := instance.Spec.Replicas
+
+	// TODO(user): Change this to be the object type created by your controller
+	// Define the desired Deployment object
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Spec.DeploymentName,
+			Namespace: instance.Namespace,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{"deployment": instance.Spec.DeploymentName},
+			},
+			Replicas: &specReplicas,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Spec.DeploymentName}},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "nginx",
+							Image: "nginx",
+						},
+					},
+				},
+			},
+		},
+	}
 ```
 
 Build again
@@ -408,24 +440,7 @@ minikube ssh "curl -X GET http://localhost:5000/v2/_catalog"
 
 ### Apply Additional Resources
 ```bash
-cat 'config/rbac/rbac_role.yaml' > 'config/rbac/kb-rbac_role.yaml'
-
-cat <<EOF >> 'config/rbac/kb-rbac_role.yaml'
-- apiGroups:
-  - tools.example.com
-  resources:
-  - foos/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - update
-  - patch
-  - delete
-EOF
-
-kubectl apply -f config/rbac/kb-rbac_role.yaml
+kubectl apply -f config/rbac/rbac_role.yaml
 
 kubectl apply -f config/rbac/rbac_role_binding.yaml
 ```

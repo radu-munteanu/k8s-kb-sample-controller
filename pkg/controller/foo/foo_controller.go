@@ -119,16 +119,16 @@ func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Define the desired Deployment object
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name + "-deployment",
+			Name:      instance.Spec.DeploymentName,
 			Namespace: instance.Namespace,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{"deployment": instance.Name + "-deployment"},
+				MatchLabels: map[string]string{"deployment": instance.Spec.DeploymentName},
 			},
 			Replicas: &specReplicas,
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Name + "-deployment"}},
+				ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{"deployment": instance.Spec.DeploymentName}},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
 						{
