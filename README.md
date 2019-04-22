@@ -514,7 +514,7 @@ As of KubeBuilder 1.0.7 (vs 1.0.5), there are a few issues that pop-up in the co
     ```
 
 ## Leader Election Example
-Check the last commit for Leader Election code.
+For Leader Election code check commit 5da26f5d1930380065834e3eb2972f13dabca3a6.
 
 ## What's Next
 
@@ -530,7 +530,7 @@ What to look at next:
     - [https://github.com/kubernetes-sigs/kubebuilder/issues/230](https://github.com/kubernetes-sigs/kubebuilder/issues/230)
     - [https://github.com/kubernetes-sigs/kubebuilder/projects/2#card-10213326](https://github.com/kubernetes-sigs/kubebuilder/projects/2#card-10213326)
     - there is some leader election code in the controller manager (in sigs.k8s.io)
-    - check the last commit for Leader Election code
+    - for Leader Election code check commit 5da26f5d1930380065834e3eb2972f13dabca3a6.
 
 - Events
     - [https://book.kubebuilder.io/beyond_basics/creating_events.html](https://book.kubebuilder.io/beyond_basics/creating_events.html)
