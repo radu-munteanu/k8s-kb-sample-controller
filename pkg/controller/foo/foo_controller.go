@@ -18,15 +18,25 @@ package foo
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"reflect"
+	"syscall"
+	"time"
 
 	toolsv1beta1 "gitlab.com/radu-munteanu/k8s-kb-sample-controller/pkg/apis/tools/v1beta1"
+	"gitlab.com/radu-munteanu/k8s-kb-sample-controller/pkg/controller/foo/leaderelectioninfo"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	k8scorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -52,11 +62,84 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileFoo{Client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	lei, err := initLeaderElection(kubernetes.NewForConfigOrDie(mgr.GetConfig()).CoreV1())
+	if err != nil {
+		log.Info("Could not init leader election: " + err.Error())
+		syscall.Exit(200)
+	}
+
+	return &ReconcileFoo{Client: mgr.GetClient(), scheme: mgr.GetScheme(), lei: lei}
+}
+
+func initLeaderElection(coreV1 k8scorev1.CoreV1Interface) (*leaderelectioninfo.LeaderElectionInfo, error) {
+	leNamespace := "default" //"leaderelection"
+
+	identity := fmt.Sprintf("foocontrollerelection-id-%d", rand.Int())
+	log.Info("I'm " + identity)
+	resourceLockConfig := resourcelock.ResourceLockConfig{
+		Identity:      identity,
+		EventRecorder: &record.FakeRecorder{},
+	}
+	lock, err := resourcelock.New(resourcelock.EndpointsResourceLock, leNamespace, "foocontrollerelection",
+		coreV1, resourceLockConfig)
+
+	if err != nil {
+		return nil, fmt.Errorf("Could not make Resource Lock: %s", err)
+	}
+
+	retryPeriod := 2 * time.Second
+	renewDeadline := 3 * retryPeriod
+	leaseDuration := 3 * renewDeadline
+
+	lei := leaderelectioninfo.New(identity)
+
+	lec := leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: leaseDuration,
+		RenewDeadline: renewDeadline,
+		RetryPeriod:   retryPeriod,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(_ context.Context) {
+				log.Info("Leader Elector: leading...")
+			},
+			// OnStoppedLeading is called when a LeaderElector client stops leading
+			OnStoppedLeading: func() {
+				log.Info("Leader Elector: stopped leading.")
+			},
+			// OnNewLeader is called when the client observes a leader that is
+			// not the previously observed leader. This includes the first observed
+			// leader when the client starts.
+			OnNewLeader: func(l string) {
+				log.Info("Leader Elector: new leader: " + l)
+				lei.SetLeader(l)
+			},
+		},
+	}
+	le, err := leaderelection.NewLeaderElector(lec)
+	if err != nil {
+		return nil, fmt.Errorf("Could not make the Leader Elector: %s", err)
+	}
+
+	go func() {
+		le.Run(context.Background())
+		// "Run starts the leader election loop"
+		// - "acquire loops calling tryAcquireOrRenew and returns immediately when tryAcquireOrRenew succeeds"
+		// - "renew loops calling tryAcquireOrRenew and returns immediately when tryAcquireOrRenew fails"
+		// - "tryAcquireOrRenew tries to acquire a leader lease if it is not already acquired,
+		// else it tries to renew the lease if it has already been acquired. Returns true
+		// on success else returns false"
+
+		// if renew fails, probably something is wrong with the cluster's resources, so we can kill this
+		// controller to spawn a fresh one
+		syscall.Exit(200)
+	}()
+
+	return lei, nil
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
 func add(mgr manager.Manager, r reconcile.Reconciler) error {
+
 	// Create a new controller
 	c, err := controller.New("foo-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
@@ -88,6 +171,7 @@ var _ reconcile.Reconciler = &ReconcileFoo{}
 type ReconcileFoo struct {
 	client.Client
 	scheme *runtime.Scheme
+	lei    *leaderelectioninfo.LeaderElectionInfo
 }
 
 // Reconcile reads that state of the cluster for a Foo object and makes changes based on the state read
@@ -100,6 +184,19 @@ type ReconcileFoo struct {
 // +kubebuilder:rbac:groups=tools.example.com,resources=foos,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=tools.example.com,resources=foos/status,verbs=get;update;patch
 func (r *ReconcileFoo) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+	log.Info("Request received:" + request.String())
+
+	for r.lei.GetLeader() == "" {
+		time.Sleep(1 * time.Second)
+	}
+
+	if r.lei.IsLeader() {
+		log.Info("I am the leader! Going to work.")
+	} else {
+		log.Info("I am not the leader. Leader is: " + r.lei.GetLeader() + ". Doing nothing.")
+		return reconcile.Result{}, nil
+	}
+
 	// Fetch the Foo instance
 	instance := &toolsv1beta1.Foo{}
 	err := r.Get(context.TODO(), request.NamespacedName, instance)

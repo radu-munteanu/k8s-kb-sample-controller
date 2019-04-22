@@ -42,6 +42,7 @@ const timeout = time.Second * 5
 func TestReconcile(t *testing.T) {
 	g := gomega.NewGomegaWithT(t)
 	instance := &toolsv1beta1.Foo{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "default"}}
+	dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: "foo-deployment", Namespace: "default"}}
 
 	// Setup the Manager and Controller.  Wrap the Controller Reconcile function so it writes each request to a
 	// channel when it is finished.
@@ -61,6 +62,8 @@ func TestReconcile(t *testing.T) {
 
 	// Create the Foo object and expect the Reconcile and Deployment to be created
 	err = c.Create(context.TODO(), instance)
+
+	err = c.Create(context.TODO(), dep)
 	// The instance object may not be a valid object because it might be missing some required fields.
 	// Please modify the instance object by adding required fields and then remove the following if statement.
 	if apierrors.IsInvalid(err) {
@@ -69,6 +72,7 @@ func TestReconcile(t *testing.T) {
 	}
 	g.Expect(err).NotTo(gomega.HaveOccurred())
 	defer c.Delete(context.TODO(), instance)
+	defer c.Delete(context.TODO(), dep)
 	g.Eventually(requests, timeout).Should(gomega.Receive(gomega.Equal(expectedRequest)))
 
 	deploy := &appsv1.Deployment{}

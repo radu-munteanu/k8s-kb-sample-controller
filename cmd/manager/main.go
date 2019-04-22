@@ -18,7 +18,9 @@ package main
 
 import (
 	"flag"
+	"math/rand"
 	"os"
+	"time"
 
 	"gitlab.com/radu-munteanu/k8s-kb-sample-controller/pkg/apis"
 	"gitlab.com/radu-munteanu/k8s-kb-sample-controller/pkg/controller"
@@ -37,6 +39,8 @@ func main() {
 	logf.SetLogger(logf.ZapLogger(false))
 	log := logf.Log.WithName("entrypoint")
 
+	rand.Seed(time.Now().UnixNano())
+
 	// Get a config to talk to the apiserver
 	log.Info("setting up client for manager")
 	cfg, err := config.GetConfig()
@@ -47,7 +51,8 @@ func main() {
 
 	// Create a new Cmd to provide shared dependencies and start components
 	log.Info("setting up manager")
-	mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
+	//mgr, err := manager.New(cfg, manager.Options{MetricsBindAddress: metricsAddr})
+	mgr, err := manager.New(cfg, manager.Options{})
 	if err != nil {
 		log.Error(err, "unable to set up overall controller manager")
 		os.Exit(1)

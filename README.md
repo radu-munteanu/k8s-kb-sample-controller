@@ -513,6 +513,9 @@ As of KubeBuilder 1.0.7 (vs 1.0.5), there are a few issues that pop-up in the co
       "error": "Operation cannot be fulfilled on deployments.apps \"foo-sample-01-deployment\": the object has been modified; please apply your changes to the latest version and try again",
     ```
 
+## Leader Election Example
+Check the last commit for Leader Election code.
+
 ## What's Next
 
 What to look at next:
@@ -527,6 +530,7 @@ What to look at next:
     - [https://github.com/kubernetes-sigs/kubebuilder/issues/230](https://github.com/kubernetes-sigs/kubebuilder/issues/230)
     - [https://github.com/kubernetes-sigs/kubebuilder/projects/2#card-10213326](https://github.com/kubernetes-sigs/kubebuilder/projects/2#card-10213326)
     - there is some leader election code in the controller manager (in sigs.k8s.io)
+    - check the last commit for Leader Election code
 
 - Events
     - [https://book.kubebuilder.io/beyond_basics/creating_events.html](https://book.kubebuilder.io/beyond_basics/creating_events.html)
